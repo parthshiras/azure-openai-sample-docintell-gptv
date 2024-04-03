@@ -10,7 +10,7 @@ from gptv import process_image
 app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
-def get_static_info_and_execute():
+def get_jpg_and_execute():
     try:
         # Get the image URL from the POST request data
         data = request.get_json()
