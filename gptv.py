@@ -23,10 +23,10 @@ DOC_INTEL_ENDPOINT = os.getenv("DOC_INTEL_ENDPOINT")
 DOC_INTEL_KEY = os.getenv("DOC_INTEL_KEY")
 
 llm = AzureChatOpenAI(
-    azure_endpoint= "https://migros-gptv.openai.azure.com/",
-    azure_deployment="gpt-4",
-    openai_api_version = "2024-03-01-preview",
-    openai_api_key= "ee3c97003e694ad4baeed547f3652c08",
+    azure_endpoint= AZURE_OPENAI_ENDPOINT,
+    azure_deployment=AZURE_OPENAI_API_DEPLOYMENT,
+    openai_api_version = OPENAI_API_VERSION,
+    openai_api_key= AZURE_OPEN_API_KEY,
     temperature=0,
     max_tokens=1000,
     verbose=True)
@@ -118,8 +118,8 @@ from azure.ai.documentintelligence.models import AnalyzeResult, DocumentAnalysis
 from azure.core.credentials import AzureKeyCredential
 
 kwargs = {"api_version": "2023-10-31-preview"}
-client = document_analysis_client = DocumentIntelligenceClient(endpoint="https://eastus.api.cognitive.microsoft.com/",
-                                                               credential=AzureKeyCredential("a1a8ca3d7e0d4fd0818c94f3e28381f0"),
+client = document_analysis_client = DocumentIntelligenceClient(endpoint=DOC_INTEL_ENDPOINT,
+                                                               credential=AzureKeyCredential(DOC_INTEL_KEY),
                                                                **kwargs)
 
 
