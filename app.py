@@ -10,6 +10,26 @@ from gptv import process_image
 app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
+def get_jpg_and_execute():                  # Use this function to POST a binary to the app
+    try:
+        # Get the binary data from the POST request
+        image_data = request.get_data()
+
+        # Write the binary data to a temporary file
+        tf = tempfile.NamedTemporaryFile(delete=False)
+        tf.write(image_data)
+        tf.close()
+
+        # Pass the temporary file path to the process_image function
+        oimg1 = process_image(tf.name)
+        static_string = f"Processed image data: {oimg1}"
+    except Exception as e:
+        static_string = f"Error processing image: {e}"
+    return static_string
+
+
+"""
+#Code below can be used as replacement if the image is posted via URL instead of a binary
 def get_jpg_and_execute():
     try:
         # Get the image URL from the POST request data
@@ -28,7 +48,7 @@ def get_jpg_and_execute():
     except Exception as e:
         static_string = f"Error processing image: {e}"
     return static_string
-
+"""
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port='5000', debug=False)  # Disable debug mode for production
