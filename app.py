@@ -13,11 +13,11 @@ app = Flask(__name__)
 def get_jpg_and_execute():                  # Use this function to POST a binary to the app
     try:
         # Get the binary data from the POST request
-        image_data = request.get_data()
+        file = request.files['image']
 
         # Write the binary data to a temporary file
         tf = tempfile.NamedTemporaryFile(delete=False)
-        tf.write(image_data)
+        tf.write(file.stream.read())
         tf.close()
 
         # Pass the temporary file path to the process_image function
