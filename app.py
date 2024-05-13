@@ -3,6 +3,7 @@ import requests
 import subprocess  # This import might not be necessary
 from flask import Flask
 from flask import request
+import flask.json as flask_json
 
 from gptv import process_image
 
@@ -22,7 +23,12 @@ def get_jpg_and_execute():                  # Use this function to POST a binary
 
         # Pass the temporary file path to the process_image function
         oimg1 = process_image(tf.name)
-        static_string = f"Processed image data: {oimg1}"
+        json = oimg1.model_dump_json()
+        response = app.response_class(
+            response=json,
+            mimetype='application/json'
+        )
+        return response
     except Exception as e:
         static_string = f"Error processing image: {e}"
     return static_string
