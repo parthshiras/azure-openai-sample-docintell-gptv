@@ -92,7 +92,7 @@ def analyze_with_gpt(image_path: str, doc_int_results: str, doc_int_barcode: str
     - Price
     - Price per unit
     - Expiration Date (or best-before)
-    - Article Number (if available)
+    - Article Number (if available, it will be multiple numbers seperated by a period)
     - Is there a bar-code available?
     - bar-code numbers (if available)
     
