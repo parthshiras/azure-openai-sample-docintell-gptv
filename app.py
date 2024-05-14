@@ -12,26 +12,23 @@ app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
 def get_jpg_and_execute():                  # Use this function to POST a binary to the app
-    try:
-        # Get the binary data from the POST request
-        file = request.files['image']
-
-        # Write the binary data to a temporary file
-        tf = tempfile.NamedTemporaryFile(delete=False)
-        tf.write(file.stream.read())
-        tf.close()
-
-        # Pass the temporary file path to the process_image function
-        oimg1 = process_image(tf.name)
-        json = oimg1.model_dump_json()
-        response = app.response_class(
-            response=json,
-            mimetype='application/json'
-        )
-        return response
-    except Exception as e:
-        static_string = f"Error processing image: {e}"
-    return static_string
+    # Get the binary data from the POST request
+    file = request.files['image']
+    # Write the binary data to a temporary file
+    tf = tempfile.NamedTemporaryFile(delete=False)
+    tf.write(file.stream.read())
+    tf.close()
+    # Pass the temporary file path to the process_image function
+    oimg1 = process_image(tf.name)
+    json = oimg1.model_dump_json()
+    # Replace '"n/a"' with 'null' in the JSON response
+    json = json.replace('"n/a"', 'null')
+    
+    response = app.response_class(
+        response=json,
+        mimetype='application/json'
+    )
+    return response
 
 
 """
