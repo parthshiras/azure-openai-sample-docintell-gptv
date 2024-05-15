@@ -5,6 +5,8 @@ import requests
 import json
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+from pathlib import Path
+import shutil
 
 #"Filename": "131060100000-378eb94a-22fe-45f5-860c-c89435739685.jpeg",
 #    "ArticleName": "SCHNITTLAUCH\r\nCIBOULETTE | ERBA CIPOLLINA\r\n",    20
@@ -42,6 +44,15 @@ class ResultProcessor:
     def _get_pic_article_name(self, pic_data):
         return ' '.join(filter(None, (pic_data["brand"], pic_data["product_name"])))
     
+    def _store_failed_info(self, check_type, pic_data, entry_data):
+        path = Path(f'./results/{check_type}/{self._current_file_name}')
+        path.mkdir(parents=True)
+        with open(path / 'pic_data.json', 'w') as f:
+            json.dump(pic_data, f, indent=4)
+        with open(path / 'entry_data.json', 'w') as f:
+            json.dump(entry_data, f, indent=4)
+        shutil.copy2(self._current_file_path, path)
+
     def _process_name(self, pic_data, entry_data):
         pic_name = self._get_pic_article_name(pic_data)
         entry_name = entry_data["ArticleName"] or ""
@@ -51,6 +62,7 @@ class ResultProcessor:
         if pic_name != entry_name and thresh < self.match_threshold:
             self.stats['product_name_mismatch'] = self.stats.get('product_name_mismatch', 0) + 1
             logging.info(f"Product Name mismatch: {pic_name} not in {entry_names} (threshold: {thresh})")
+            self._store_failed_info('product_name', pic_data, entry_data)
         else:
             self._add_score(20)
 
@@ -58,27 +70,37 @@ class ResultProcessor:
         if pic_data["article_number"] != entry_data["ArticleNumber"]:
             self.stats['article_number_mismatch'] = self.stats.get('article_number_mismatch', 0) + 1
             logging.info(f"Article Number mismatch: {pic_data['article_number']} != {entry_data['ArticleNumber']}")
+            self._store_failed_info('article_number', pic_data, entry_data)
         else:
             self._add_score(50)
 
     def _process_barcode(self, pic_data, entry_data):
+        succeded = True
         if pic_data["bar_code_available"] != (entry_data["BarcodeNumber"] is not None):
             self.stats['barcode_available_mismatch'] = self.stats.get('barcode_available_mismatch', 0) + 1
             logging.info(f"Barcode available mismatch: {pic_data['bar_code_available']} != {entry_data['BarcodeNumber'] is not None}")
+            succeded = False
         else:
             self._add_score(25)
 
-        if pic_data["bar_code_numbers"] != (entry_data["BarcodeNumber"] or "").replace(" ", ""):
+        if (pic_data["bar_code_numbers"] or "") != (entry_data["BarcodeNumber"] or "").replace(" ", ""):
             self.stats['barcode_number_mismatch'] = self.stats.get('barcode_number_mismatch', 0) + 1
             logging.info(f"Barcode Numbers mismatch: {pic_data['bar_code_numbers']} != {entry_data['BarcodeNumber']}")
+            succeded = False
         else:
             self._add_score(25)
 
+        if not succeded:
+            self._store_failed_info('barcode', pic_data, entry_data)
+
     def _process_pim(self, pic_data, entry_data):
+        succeded = True
+
         pim_article = entry_data["PimArticle"]
         if (pic_data["article_number"] or "").replace(".", "") != (pim_article["ArticleNumber"] or ""):
             self.stats['pim_article_number_mismatch'] = self.stats.get('pim_article_number_mismatch', 0) + 1
             logging.info(f"Pim Article Number mismatch: {pic_data['article_number']} != {pim_article['ArticleNumber']}")
+            succeded = False
         else:
             self._add_score(30)
 
@@ -89,12 +111,17 @@ class ResultProcessor:
         if thresh < self.match_threshold:
             self.stats['pim_product_name_mismatch'] = self.stats.get('pim_product_name_mismatch', 0) + 1
             logging.info(f"Pim Product Name mismatch: {pic_name} not in {pim_article_names} (threshold: {thresh})")
+            succeded = False
         else:
             self._add_score(10)
 
-    def process(self, file_name, pic_data):
+        if not succeded:
+            self._store_failed_info('pim', pic_data, entry_data)
+
+    def process(self, file_name, full_path, pic_data):
         self.stats['processed'] = self.stats.get('processed', 0) + 1
         self._current_file_name = file_name
+        self._current_file_path = full_path
 
         entry = next((entry for entry in self.data_set if entry["Filename"] == file_name), None)
 
@@ -152,7 +179,7 @@ def main():
                 
                 if response.status_code == 200:
                     response_data = response.json()
-                    rp.process(file, response_data)
+                    rp.process(file, file_path, response_data)
                     
                     print(f"File: {file} processed successfully.")
                 else:
