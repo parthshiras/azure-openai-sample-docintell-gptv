@@ -60,6 +60,7 @@ class ImageInformation(BaseModel):
     price: str = Field(default="n/a", description="price of the product, or n/a")
     price_per_unit: str = Field(default="n/a", description="price of the product per unit, or n/a")
     expiration_date: str = Field(default="n/a", description="product's date of expiration/best-before, or n/a")
+    article_number: str = Field(default="n/a", description="Article Number of the product, or n/a")
     bar_code_available: bool = Field(default=False, description="is there bar-code in the image")
     bar_code_numbers: str = Field(default=False, description="Numbers of the bar-code, or n/a")
 
@@ -91,6 +92,7 @@ def analyze_with_gpt(image_path: str, doc_int_results: str, doc_int_barcode: str
     - Price
     - Price per unit
     - Expiration Date (or best-before)
+    - Article Number (if available, it will be multiple numbers seperated by a period)
     - Is there a bar-code available?
     - bar-code numbers (if available)
     

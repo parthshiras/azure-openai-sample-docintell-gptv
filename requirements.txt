@@ -10,3 +10,5 @@ langchain_community
 langchain_openai
 tiktoken
 requests
+fuzzywuzzy
+python-Levenshtein
