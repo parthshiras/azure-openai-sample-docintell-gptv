@@ -45,11 +45,12 @@ class ResultProcessor:
     def _process_name(self, pic_data, entry_data):
         pic_name = self._get_pic_article_name(pic_data)
         entry_name = entry_data["ArticleName"] or ""
-        entry_name = "|".join(l for l in entry_name.splitlines() if l)
+        entry_names = entry_name.splitlines()
+        (_, thresh) = process.extractOne(pic_name, entry_names) or (0, 0)
 
-        if pic_name != entry_name and not self._fuzzy_compare(pic_name, entry_name):
+        if pic_name != entry_name and thresh < self.match_threshold:
             self.stats['product_name_mismatch'] = self.stats.get('product_name_mismatch', 0) + 1
-            logging.info(f"Product Name mismatch: {pic_name} != {entry_name} (threshold: {fuzz.ratio(pic_name, entry_name)})")
+            logging.info(f"Product Name mismatch: {pic_name} not in {entry_names} (threshold: {thresh})")
         else:
             self._add_score(20)
 
@@ -83,7 +84,7 @@ class ResultProcessor:
 
         pic_name = self._get_pic_article_name(pic_data)
         pim_article_names = (pim_article["ArticleName"] or {}).values()
-        (best, thresh) = process.extractOne(pic_name, pim_article_names)
+        (_, thresh) = process.extractOne(pic_name, pim_article_names) or (0, 0)
 
         if thresh < self.match_threshold:
             self.stats['pim_product_name_mismatch'] = self.stats.get('pim_product_name_mismatch', 0) + 1
