@@ -1,5 +1,6 @@
 import os
-import logging, sys
+import logging
+import sys
 import argparse
 import requests
 import json
@@ -7,23 +8,8 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from pathlib import Path
 import shutil
-
-#"Filename": "131060100000-378eb94a-22fe-45f5-860c-c89435739685.jpeg",
-#    "ArticleName": "SCHNITTLAUCH\r\nCIBOULETTE | ERBA CIPOLLINA\r\n",    20
-#    "ArticleNumber": null,                                               50
-#    "BarcodeNumber": null,                                               50
-#    "PimArticle": {
-#      "ArticleNumber": "131060100000",                                   30
-#      "ArticleName": {                                                   10
-#        "de": "Anna\u0027s Best Schnittlauch",
-#        "fr": "Anna\u0027s Best Ciboulette coup\u00E9e",
-#        "it": "Anna\u0027s Best Cipollina tagliata"
-#      },
-#      "Eans": [
-#        "7617027632867",
-#        "7617027632874"
-#      ]
-#    }
+from queue import Queue
+import threading
 
 class ResultProcessor:
     def __init__(self, match_threshold) -> None:
@@ -37,16 +23,14 @@ class ResultProcessor:
             self.data_set = json.load(f)
 
     def _fuzzy_compare(self, a, b):
-        if a == b or fuzz.ratio(a, b) >= self.match_threshold:
-            return True
-        return False
+        return a == b or fuzz.ratio(a, b) >= self.match_threshold
     
     def _get_pic_article_name(self, pic_data):
-        return ' '.join(filter(None, (pic_data["brand"], pic_data["product_name"])))
+        return ' '.join(filter(None, (pic_data.get("brand"), pic_data.get("product_name"))))
     
     def _store_failed_info(self, check_type, pic_data, entry_data):
         path = Path(f'./results/{check_type}/{self._current_file_name}')
-        path.mkdir(parents=True)
+        path.mkdir(parents=True, exist_ok=True)
         with open(path / 'pic_data.json', 'w') as f:
             json.dump(pic_data, f, indent=4)
         with open(path / 'entry_data.json', 'w') as f:
@@ -75,32 +59,32 @@ class ResultProcessor:
             self._add_score(50)
 
     def _process_barcode(self, pic_data, entry_data):
-        succeded = True
+        succeeded = True
         if pic_data["bar_code_available"] != (entry_data["BarcodeNumber"] is not None):
             self.stats['barcode_available_mismatch'] = self.stats.get('barcode_available_mismatch', 0) + 1
             logging.info(f"Barcode available mismatch: {pic_data['bar_code_available']} != {entry_data['BarcodeNumber'] is not None}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(25)
 
         if (pic_data["bar_code_numbers"] or "") != (entry_data["BarcodeNumber"] or "").replace(" ", ""):
             self.stats['barcode_number_mismatch'] = self.stats.get('barcode_number_mismatch', 0) + 1
             logging.info(f"Barcode Numbers mismatch: {pic_data['bar_code_numbers']} != {entry_data['BarcodeNumber']}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(25)
 
-        if not succeded:
+        if not succeeded:
             self._store_failed_info('barcode', pic_data, entry_data)
 
     def _process_pim(self, pic_data, entry_data):
-        succeded = True
+        succeeded = True
 
         pim_article = entry_data["PimArticle"]
         if (pic_data["article_number"] or "").replace(".", "") != (pim_article["ArticleNumber"] or ""):
             self.stats['pim_article_number_mismatch'] = self.stats.get('pim_article_number_mismatch', 0) + 1
             logging.info(f"Pim Article Number mismatch: {pic_data['article_number']} != {pim_article['ArticleNumber']}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(30)
 
@@ -111,11 +95,11 @@ class ResultProcessor:
         if thresh < self.match_threshold:
             self.stats['pim_product_name_mismatch'] = self.stats.get('pim_product_name_mismatch', 0) + 1
             logging.info(f"Pim Product Name mismatch: {pic_name} not in {pim_article_names} (threshold: {thresh})")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(10)
 
-        if not succeded:
+        if not succeeded:
             self._store_failed_info('pim', pic_data, entry_data)
 
     def process(self, file_name, full_path, pic_data):
@@ -128,6 +112,7 @@ class ResultProcessor:
         if entry is None:
             self.failed(file_name, "No Dataset Entry found")
             logging.warning(f"Entry for file {file_name} not found")
+            return
 
         self._process_name(pic_data, entry)
         self._process_article_number(pic_data, entry)
@@ -147,11 +132,32 @@ class ResultProcessor:
     def print_stats(self):
         print(json.dumps(self.stats, indent=4))
 
+
+def worker(input_queue, output_queue, result_processor, api_url):
+    while True:
+        file_name, file_path = input_queue.get()
+        if file_name is None:
+            break
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+            response = requests.post(api_url, files={'image': file_data})
+            if response.status_code == 200:
+                response_data = response.json()
+                result_processor.process(file_name, file_path, response_data)
+                output_queue.put((file_name, 'success'))
+            else:
+                result_processor.failed(file_name, response.text)
+                output_queue.put((file_name, f'Error: {response.status_code}'))
+        input_queue.task_done()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Test Image Processing')
     parser.add_argument('--directory', type=str, help='The directory containing the images to process', default='data')
     parser.add_argument('--threshold', type=int, help='The threshold for fuzzy matching', default=80)
     parser.add_argument('--max', type=int, help='The maximum number of files to process', default=1000000)
+    parser.add_argument('--parallel', type=int, help='Number of parallel threads', default=1)
+    parser.add_argument('--api-url', type=str, help='API URL to post the image data', default='http://localhost:5000')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
     args = parser.parse_args()
 
@@ -161,38 +167,32 @@ def main():
     rp = ResultProcessor(args.threshold)
     files = os.listdir(args.directory)
     
-    i = 0
-    for file in files:
-        i += 1
-        if i > args.max:
+    input_queue = Queue()
+    output_queue = Queue()
+
+    for i, file in enumerate(files):
+        if i >= args.max:
             logging.debug(f"Reached maximum number of files to process: {args.max}")
             break
-
-        logging.debug(f'processing file {file}')
         file_path = os.path.join(args.directory, file)
-        
         if os.path.isfile(file_path):
-            with open(file_path, 'rb') as f:
-                file_data = f.read()
-                
-                response = requests.post('http://localhost:5000', files={'image': file_data})
-                
-                if response.status_code == 200:
-                    response_data = response.json()
-                    rp.process(file, file_path, response_data)
-                    
-                    print(f"File: {file} processed successfully.")
-                else:
-                    rp.failed(file, response)
-                    print(f"File: {file}, Response Code: {response.status_code} Error: {response.text}")
-        else:
-            logging.error(f"File {file} was not a file. Skipping.")
+            input_queue.put((file, file_path))
+    
+    threads = []
+    for _ in range(args.parallel):
+        t = threading.Thread(target=worker, args=(input_queue, output_queue, rp, args.api_url))
+        t.start()
+        threads.append(t)
+
+    for _ in threads:
+        input_queue.put((None, None))
+
+    for t in threads:
+        t.join()
 
     rp.print_stats()
+
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     main()
-
-
-
