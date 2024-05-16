@@ -4,5 +4,4 @@ include/
 lib/
 pyvenv.cfg
 data/
-test_pictures/
 results/
