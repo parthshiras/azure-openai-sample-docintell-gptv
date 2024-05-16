@@ -83,22 +83,22 @@ class ResultProcessor:
             self._add_score(50)
 
     def _process_barcode(self, pic_data, entry_data):
-        succeded = True
+        succeeded = True
         if pic_data["bar_code_available"] != (entry_data["BarcodeNumber"] is not None):
             self.stats['barcode_available_mismatch'] = self.stats.get('barcode_available_mismatch', 0) + 1
             logging.info(f"Barcode available mismatch: {pic_data['bar_code_available']} != {entry_data['BarcodeNumber'] is not None}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(25)
 
         if (pic_data["bar_code_numbers"] or "") != (entry_data["BarcodeNumber"] or "").replace(" ", ""):
             self.stats['barcode_number_mismatch'] = self.stats.get('barcode_number_mismatch', 0) + 1
             logging.info(f"Barcode Numbers mismatch: {pic_data['bar_code_numbers']} != {entry_data['BarcodeNumber']}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(25)
 
-        if not succeded:
+        if not succeeded:
             self._store_failed_info('barcode', pic_data, entry_data)
             self._current_failed = True
 
@@ -106,13 +106,13 @@ class ResultProcessor:
                 self._add_score(25)
 
     def _process_pim(self, pic_data, entry_data):
-        succeded = True
+        succeeded = True
 
         pim_article = entry_data["PimArticle"]
         if (pic_data["article_number"] or "").replace(".", "") != (pim_article["ArticleNumber"] or ""):
             self.stats['pim_article_number_mismatch'] = self.stats.get('pim_article_number_mismatch', 0) + 1
             logging.info(f"Pim Article Number mismatch: {pic_data['article_number']} != {pim_article['ArticleNumber']}")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(30)
 
@@ -123,11 +123,11 @@ class ResultProcessor:
         if thresh < self.match_threshold:
             self.stats['pim_product_name_mismatch'] = self.stats.get('pim_product_name_mismatch', 0) + 1
             logging.info(f"Pim Product Name mismatch: {pic_name} not in {pim_article_names} (threshold: {thresh})")
-            succeded = False
+            succeeded = False
         else:
             self._add_score(15)
 
-        if not succeded:
+        if not succeeded:
             self._store_failed_info('pim', pic_data, entry_data)
             self._current_failed = True
 
@@ -142,6 +142,7 @@ class ResultProcessor:
         if entry is None:
             self.failed(file_name, pic_data, "No Dataset Entry found")
             logging.warning(f"Entry for file {file_name} not found")
+            return
 
         self._process_name(pic_data, entry)
         self._process_article_number(pic_data, entry)
@@ -181,9 +182,7 @@ def main():
     rp = ResultProcessor(args.threshold)
     files = os.listdir(args.directory)
     
-    i = 0
-    for file in files:
-        i += 1
+    for i, file in enumerate(files):
         if i > args.max:
             logging.debug(f"Reached maximum number of files to process: {args.max}")
             break
