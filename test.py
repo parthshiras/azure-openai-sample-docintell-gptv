@@ -47,6 +47,7 @@ class ResultProcessor:
             self.stats['product_name_mismatch'] = self.stats.get('product_name_mismatch', 0) + 1
             logging.info(f"Product Name mismatch: {pic_name} not in {entry_names} (threshold: {thresh})")
             self._store_failed_info('product_name', pic_data, entry_data)
+            self._add_score(0)
         else:
             self._add_score(20)
 
@@ -55,6 +56,7 @@ class ResultProcessor:
             self.stats['article_number_mismatch'] = self.stats.get('article_number_mismatch', 0) + 1
             logging.info(f"Article Number mismatch: {pic_data['article_number']} != {entry_data['ArticleNumber']}")
             self._store_failed_info('article_number', pic_data, entry_data)
+            self._add_score(0)
         else:
             self._add_score(50)
 
@@ -64,6 +66,7 @@ class ResultProcessor:
             self.stats['barcode_available_mismatch'] = self.stats.get('barcode_available_mismatch', 0) + 1
             logging.info(f"Barcode available mismatch: {pic_data['bar_code_available']} != {entry_data['BarcodeNumber'] is not None}")
             succeeded = False
+            self._add_score(0)
         else:
             self._add_score(25)
 
@@ -71,6 +74,7 @@ class ResultProcessor:
             self.stats['barcode_number_mismatch'] = self.stats.get('barcode_number_mismatch', 0) + 1
             logging.info(f"Barcode Numbers mismatch: {pic_data['bar_code_numbers']} != {entry_data['BarcodeNumber']}")
             succeeded = False
+            self._add_score(0)
         else:
             self._add_score(25)
 
@@ -103,6 +107,7 @@ class ResultProcessor:
             self._store_failed_info('pim', pic_data, entry_data)
 
     def process(self, file_name, full_path, pic_data):
+        logging.debug(f"Processing file: {file_name}")
         self.stats['processed'] = self.stats.get('processed', 0) + 1
         self._current_file_name = file_name
         self._current_file_path = full_path
@@ -134,19 +139,20 @@ class ResultProcessor:
 
     @staticmethod
     def merge_stats(stats_list):
-        merged_stats = {}
+        merged_stats = {'score': {}}
         for stats in stats_list:
             for key, value in stats.items():
-                if key not in merged_stats:
-                    merged_stats[key] = value
-                elif isinstance(value, dict):
-                    if not isinstance(merged_stats[key], dict):
+                if key == 'score':
+                    for file_key, file_value in value.items():
+                        if file_key not in merged_stats['score']:
+                            merged_stats['score'][file_key] = file_value
+                        else:
+                            merged_stats['score'][file_key] += file_value
+                else:
+                    if key not in merged_stats:
                         merged_stats[key] = value
                     else:
-                        for sub_key, sub_value in value.items():
-                            merged_stats[key][sub_key] = merged_stats[key].get(sub_key, 0) + sub_value
-                else:
-                    merged_stats[key] += value
+                        merged_stats[key] += value
         return merged_stats
 
 
@@ -193,7 +199,8 @@ def main():
             logging.debug(f"Reached maximum number of files to process: {args.max}")
             break
         file_path = os.path.join(args.directory, file)
-        if os.path.isfile(file_path):
+        if os.path.isfile(file_path) and not file.endswith('.json'):
+            logging.debug(f"Adding file to queue: {file}")
             input_queue.put((file, file_path))
     
     threads = []
@@ -212,6 +219,7 @@ def main():
     while not output_queue.empty():
         item = output_queue.get()
         if item[0] == 'stats':
+            logging.debug(f"Merging stats from worker: {item[1]}")
             all_stats.append(item[1])
 
     merged_stats = ResultProcessor.merge_stats(all_stats)
