@@ -64,6 +64,9 @@ class ResultProcessor:
             logging.info(f"Product Name mismatch: {pic_name} not in {entry_names} (threshold: {thresh})")
             self._store_failed_info('product_name', pic_data, entry_data)
             self._current_failed = True
+
+            if entry_data["ArticleNumber"] is None:
+                self._add_score(15)
         else:
             self._add_score(20)
 
@@ -73,6 +76,9 @@ class ResultProcessor:
             logging.info(f"Article Number mismatch: {pic_data['article_number']} != {entry_data['ArticleNumber']}")
             self._store_failed_info('article_number', pic_data, entry_data)
             self._current_failed = True
+
+            if entry_data["ArticleNumber"] is None:
+                self._add_score(35)
         else:
             self._add_score(50)
 
@@ -96,6 +102,9 @@ class ResultProcessor:
             self._store_failed_info('barcode', pic_data, entry_data)
             self._current_failed = True
 
+            if entry_data["BarcodeNumber"] is None:
+                self._add_score(25)
+
     def _process_pim(self, pic_data, entry_data):
         succeded = True
 
@@ -116,7 +125,7 @@ class ResultProcessor:
             logging.info(f"Pim Product Name mismatch: {pic_name} not in {pim_article_names} (threshold: {thresh})")
             succeded = False
         else:
-            self._add_score(10)
+            self._add_score(15)
 
         if not succeded:
             self._store_failed_info('pim', pic_data, entry_data)
@@ -131,7 +140,7 @@ class ResultProcessor:
         entry = next((entry for entry in self.data_set if entry["Filename"] == file_name), None)
 
         if entry is None:
-            self.failed(file_name, "No Dataset Entry found")
+            self.failed(file_name, pic_data, "No Dataset Entry found")
             logging.warning(f"Entry for file {file_name} not found")
 
         self._process_name(pic_data, entry)
@@ -144,6 +153,7 @@ class ResultProcessor:
             self._store_failed_info('succeeded', pic_data, entry)
 
     def failed(self, file_name, pic_data, response):
+        self._current_file_name = file_name
         failed = self.stats.get('failed', {})
         failed[file_name] = response
         self.stats['failed'] = failed
@@ -193,7 +203,7 @@ def main():
                     
                     logging.info(f"File: {file} ({i}) processed successfully.")
                 else:
-                    rp.failed(file, response_data, response.text)
+                    rp.failed(file, {}, response.text)
                     logging.info(f"File: {file}, Response Code: {response.status_code} Error: {response.text}")
         else:
             logging.error(f"File {file} was not a file. Skipping.")
