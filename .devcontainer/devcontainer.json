@@ -28,6 +28,7 @@
 				"ms-azure-devops.azure-pipelines",
 				"esbenp.prettier-vscode",
 				"ms-python.python",
+				"ms-python.black-formatter",
 				"svelte.svelte-vscode",
 				"github.copilot"
 			]
