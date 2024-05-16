@@ -63,6 +63,7 @@ class ResultProcessor:
             self.stats['product_name_mismatch'] = self.stats.get('product_name_mismatch', 0) + 1
             logging.info(f"Product Name mismatch: {pic_name} not in {entry_names} (threshold: {thresh})")
             self._store_failed_info('product_name', pic_data, entry_data)
+            self._current_failed = True
         else:
             self._add_score(20)
 
@@ -71,6 +72,7 @@ class ResultProcessor:
             self.stats['article_number_mismatch'] = self.stats.get('article_number_mismatch', 0) + 1
             logging.info(f"Article Number mismatch: {pic_data['article_number']} != {entry_data['ArticleNumber']}")
             self._store_failed_info('article_number', pic_data, entry_data)
+            self._current_failed = True
         else:
             self._add_score(50)
 
@@ -92,6 +94,7 @@ class ResultProcessor:
 
         if not succeded:
             self._store_failed_info('barcode', pic_data, entry_data)
+            self._current_failed = True
 
     def _process_pim(self, pic_data, entry_data):
         succeded = True
@@ -117,11 +120,13 @@ class ResultProcessor:
 
         if not succeded:
             self._store_failed_info('pim', pic_data, entry_data)
+            self._current_failed = True
 
     def process(self, file_name, full_path, pic_data):
         self.stats['processed'] = self.stats.get('processed', 0) + 1
         self._current_file_name = file_name
         self._current_file_path = full_path
+        self._current_failed = False
 
         entry = next((entry for entry in self.data_set if entry["Filename"] == file_name), None)
 
@@ -134,10 +139,15 @@ class ResultProcessor:
         self._process_barcode(pic_data, entry)
         self._process_pim(pic_data, entry)
 
-    def failed(self, file_name, response):
+        if not self._current_failed:
+            self.stats['succeeded'] = self.stats.get('succeeded', 0) + 1
+            self._store_failed_info('succeeded', pic_data, entry)
+
+    def failed(self, file_name, pic_data, response):
         failed = self.stats.get('failed', {})
         failed[file_name] = response
         self.stats['failed'] = failed
+        self._store_failed_info('failed', pic_data, { response: response })
 
     def _add_score(self, value):
         score = self.stats['score'] = self.stats.get('score', {})
@@ -145,7 +155,7 @@ class ResultProcessor:
         self.stats['score'] = score
 
     def print_stats(self):
-        print(json.dumps(self.stats, indent=4))
+        logging.info(json.dumps(self.stats, indent=4, default=lambda o: '<not serializable>'))
 
 def main():
     parser = argparse.ArgumentParser(description='Test Image Processing')
@@ -181,10 +191,10 @@ def main():
                     response_data = response.json()
                     rp.process(file, file_path, response_data)
                     
-                    print(f"File: {file} processed successfully.")
+                    logging.info(f"File: {file} ({i}) processed successfully.")
                 else:
-                    rp.failed(file, response)
-                    print(f"File: {file}, Response Code: {response.status_code} Error: {response.text}")
+                    rp.failed(file, response_data, response.text)
+                    logging.info(f"File: {file}, Response Code: {response.status_code} Error: {response.text}")
         else:
             logging.error(f"File {file} was not a file. Skipping.")
 
