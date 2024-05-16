@@ -8,23 +8,6 @@ from fuzzywuzzy import process
 from pathlib import Path
 import shutil
 
-#"Filename": "131060100000-378eb94a-22fe-45f5-860c-c89435739685.jpeg",
-#    "ArticleName": "SCHNITTLAUCH\r\nCIBOULETTE | ERBA CIPOLLINA\r\n",    20
-#    "ArticleNumber": null,                                               50
-#    "BarcodeNumber": null,                                               50
-#    "PimArticle": {
-#      "ArticleNumber": "131060100000",                                   30
-#      "ArticleName": {                                                   10
-#        "de": "Anna\u0027s Best Schnittlauch",
-#        "fr": "Anna\u0027s Best Ciboulette coup\u00E9e",
-#        "it": "Anna\u0027s Best Cipollina tagliata"
-#      },
-#      "Eans": [
-#        "7617027632867",
-#        "7617027632874"
-#      ]
-#    }
-
 class ResultProcessor:
     def __init__(self, match_threshold) -> None:
         self.stats = {}
