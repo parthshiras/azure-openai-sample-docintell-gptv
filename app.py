@@ -5,12 +5,17 @@ import string
 from flask import Flask, request
 import flask.json as flask_json
 import logging
+import time
 
 from gptv import process_image
 
 app = Flask(__name__)
 
 TEST = False
+DEBUG = False
+
+if DEBUG:
+    logging.getLogger().setLevel(logging.DEBUG)
 
 def get_random_string(length=8):
     letters = string.ascii_letters
@@ -50,6 +55,10 @@ def get_jpg_and_execute():
     except requests.exceptions.RequestException as e:
         logging.error(f"API call failed: {e}")
         if TEST:
+            sleep_time = random.randint(10, 30)
+            
+            logging.debug(f"Sleeping for {sleep_time} seconds")
+            time.sleep(sleep_time)
             json_response = get_dummy_response()
         else:
             raise e
@@ -83,4 +92,4 @@ def get_jpg_and_execute():
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port='5000', debug=False)
+    app.run(host='0.0.0.0', port='5000', debug=DEBUG, threaded=True)
