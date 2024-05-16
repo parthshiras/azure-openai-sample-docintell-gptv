@@ -132,8 +132,26 @@ class ResultProcessor:
     def print_stats(self):
         print(json.dumps(self.stats, indent=4))
 
+    @staticmethod
+    def merge_stats(stats_list):
+        merged_stats = {}
+        for stats in stats_list:
+            for key, value in stats.items():
+                if key not in merged_stats:
+                    merged_stats[key] = value
+                elif isinstance(value, dict):
+                    if not isinstance(merged_stats[key], dict):
+                        merged_stats[key] = value
+                    else:
+                        for sub_key, sub_value in value.items():
+                            merged_stats[key][sub_key] = merged_stats[key].get(sub_key, 0) + sub_value
+                else:
+                    merged_stats[key] += value
+        return merged_stats
 
-def worker(input_queue, output_queue, result_processor, api_url):
+
+def worker(input_queue, output_queue, match_threshold, api_url):
+    result_processor = ResultProcessor(match_threshold)
     while True:
         file_name, file_path = input_queue.get()
         if file_name is None:
@@ -149,6 +167,7 @@ def worker(input_queue, output_queue, result_processor, api_url):
                 result_processor.failed(file_name, response.text)
                 output_queue.put((file_name, f'Error: {response.status_code}'))
         input_queue.task_done()
+    output_queue.put(('stats', result_processor.stats))
 
 
 def main():
@@ -164,7 +183,6 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    rp = ResultProcessor(args.threshold)
     files = os.listdir(args.directory)
     
     input_queue = Queue()
@@ -180,7 +198,7 @@ def main():
     
     threads = []
     for _ in range(args.parallel):
-        t = threading.Thread(target=worker, args=(input_queue, output_queue, rp, args.api_url))
+        t = threading.Thread(target=worker, args=(input_queue, output_queue, args.threshold, args.api_url))
         t.start()
         threads.append(t)
 
@@ -190,7 +208,14 @@ def main():
     for t in threads:
         t.join()
 
-    rp.print_stats()
+    all_stats = []
+    while not output_queue.empty():
+        item = output_queue.get()
+        if item[0] == 'stats':
+            all_stats.append(item[1])
+
+    merged_stats = ResultProcessor.merge_stats(all_stats)
+    print(json.dumps(merged_stats, indent=4))
 
 
 if __name__ == '__main__':
