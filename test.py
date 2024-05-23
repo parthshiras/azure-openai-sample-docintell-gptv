@@ -191,23 +191,24 @@ async def post(url, file, file_path, session):
     logging.debug(f"processing file {file_path}")
     try:
         if os.path.isfile(file_path):
+            form_data = aiohttp.FormData()
+
             with open(file_path, "rb") as f:
                 file_data = f.read()
-                data = aiohttp.FormData()
-                data.add_field('image', file_data, filename='image.jpg', content_type='image/jpeg')
+                form_data.add_field('image', file_data, filename='image.jpg', content_type='image/jpeg')
 
-                async with session.post(url, data=data) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        logging.info(f"File: {file_path} processed successfully.")
-                        return (True, file, file_path, response_data)
-                    elif response.status == 429:
-                        logging.info(f"Rate limit reached. File: {file}, will retry")
-                        return (False, file, file_path, "REDO")
-                    else:
-                        text = await response.text()
-                        logging.error(f"File: {file_path}, Response Code: {response.status} Error: {text}")
-                        return (False, file, file_path, text)
+            async with session.post(url, data=form_data) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    logging.info(f"File: {file_path} processed successfully.")
+                    return (True, file, file_path, response_data)
+                elif response.status == 429:
+                    logging.info(f"Rate limit reached. File: {file}, will retry")
+                    return (False, file, file_path, "REDO")
+                else:
+                    text = await response.text()
+                    logging.error(f"File: {file_path}, Response Code: {response.status} Error: {text}")
+                    return (False, file, file_path, text)
         else:
             logging.error(f"File {file_path} was not a file. Skipping.")
             return (False, file, file_path, "File not found.")
