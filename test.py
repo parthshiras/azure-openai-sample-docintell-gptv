@@ -252,8 +252,10 @@ async def main():
     logging.debug(f"Processing {len(files)} files.")
 
     conn = aiohttp.TCPConnector(limit=args.concurrent)
+    # set total=None because the POST is really slow and the defeault will cause most requests to fail.  Also set read to 10 minutes
+    timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=600)
 
-    async with aiohttp.ClientSession(connector=conn) as session:
+    async with aiohttp.ClientSession(connector=conn, timeout=timeout) as session:
         results = await asyncio.gather(*(post("http://localhost:5000", file, os.path.join(args.directory, file), session) for file in files))
         logging.info("Finalized all. Return is a list of len {} outputs.".format(len(results)))
 
