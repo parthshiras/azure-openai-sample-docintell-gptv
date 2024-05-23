@@ -201,8 +201,9 @@ async def post(url, file, file_path, session):
                         logging.info(f"File: {file_path} processed successfully.")
                         return (True, file, file_path, response_data)
                     else:
-                        logging.error(f"File: {file_path}, Response Code: {response.status} Error: {response.text}")
-                        return (False, file, file_path, response.text)
+                        text = await response.text()
+                        logging.error(f"File: {file_path}, Response Code: {response.status} Error: {text}")
+                        return (False, file, file_path, text)
         else:
             logging.error(f"File {file_path} was not a file. Skipping.")
             return (False, file, file_path, "File not found.")
