@@ -2,9 +2,8 @@ import asyncio
 import os
 import logging, sys
 import argparse
-import traceback
+import aiofiles
 import aiohttp
-import requests
 import json
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
@@ -193,8 +192,8 @@ async def post(url, file, file_path, session):
         if os.path.isfile(file_path):
             form_data = aiohttp.FormData()
 
-            with open(file_path, "rb") as f:
-                file_data = f.read()
+            async with aiofiles.open(file_path, mode='rb') as f:
+                file_data = await f.read()
                 form_data.add_field('image', file_data, filename='image.jpg', content_type='image/jpeg')
 
             async with session.post(url, data=form_data) as response:
