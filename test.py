@@ -238,7 +238,7 @@ async def main():
     parser.add_argument("--threshold", type=int, help="The threshold for fuzzy matching", default=80)
     parser.add_argument("--concurrent", type=int, help="The number of concurrent requests to make", default=1)
     parser.add_argument("--max", type=int, help="The maximum number of files to process", default=0)
-    parser.add_argument("--retries", type=int, help="Amount of times to retry rate limited files", default=3)
+    parser.add_argument("--retries", type=int, help="Amount of times to retry rate limited files", default=10)
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
