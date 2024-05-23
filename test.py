@@ -2,6 +2,7 @@ import asyncio
 import os
 import logging, sys
 import argparse
+import traceback
 import aiohttp
 import requests
 import json
@@ -200,6 +201,9 @@ async def post(url, file, file_path, session):
                         response_data = await response.json()
                         logging.info(f"File: {file_path} processed successfully.")
                         return (True, file, file_path, response_data)
+                    elif response.status == 429:
+                        logging.info(f"Rate limit reached. File: {file}, will retry")
+                        return (False, file, file_path, "REDO")
                     else:
                         text = await response.text()
                         logging.error(f"File: {file_path}, Response Code: {response.status} Error: {text}")
@@ -207,9 +211,25 @@ async def post(url, file, file_path, session):
         else:
             logging.error(f"File {file_path} was not a file. Skipping.")
             return (False, file, file_path, "File not found.")
+    except asyncio.TimeoutError as e:
+        logging.error(f"Timeout error, retrying {file}")
+        return (False, file, file_path, "REDO")
     except Exception as e:
-        logging.error("Unable to get url {} due to {}.".format(url, e))
-        return (False, file, file_path, str(e))
+        logging.error(f"Unable to get url {url} due to {e}")
+        return (False, file, file_path, f'{str(e)}({type(e)})')
+    
+def process_results(rp, results):
+    redo = []
+
+    for (success, file, file_path, response) in results:
+        if success:
+            rp.process(file, file_path, response)
+        elif response == "REDO":
+            redo.append((file, file_path))
+        else:
+            rp.failed(file, {}, response)
+
+    return redo
 
 
 async def main():
@@ -217,14 +237,18 @@ async def main():
     parser.add_argument("--directory", type=str, help="The directory containing the images to process", default="data")
     parser.add_argument("--threshold", type=int, help="The threshold for fuzzy matching", default=80)
     parser.add_argument("--concurrent", type=int, help="The number of concurrent requests to make", default=1)
-    parser.add_argument("--max", type=int, help="The maximum number of files to process", default=100000000)
+    parser.add_argument("--max", type=int, help="The maximum number of files to process", default=0)
+    parser.add_argument("--retries", type=int, help="Amount of times to retry rate limited files", default=3)
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    files = os.listdir(args.directory)[: args.max]
+    files = os.listdir(args.directory)
+    files = list(filter(lambda f: f != 'meta.json', files))
+    if args.max > 0:
+        files = files[:args.max]
     logging.debug(f"Processing {len(files)} files.")
 
     conn = aiohttp.TCPConnector(limit=args.concurrent)
@@ -235,11 +259,14 @@ async def main():
 
         rp = ResultProcessor(args.threshold)
 
-        for (success, file, file_path, response) in results:
-            if success:
-                rp.process(file, file_path, response)
-            else:
-                rp.failed(file, {}, response)
+        redo = process_results(rp, results)
+        retries = args.retries
+
+        while redo and retries > 0:
+            logging.info(f"Retrying {len(redo)} files.")
+            results = await asyncio.gather(*(post("http://localhost:5000", file, file_path, session) for (file, file_path) in redo))
+            redo = process_results(rp, results)
+            retries -= 1
 
         rp.print_stats()
 
