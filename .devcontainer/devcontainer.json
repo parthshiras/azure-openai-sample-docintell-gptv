@@ -17,7 +17,6 @@
 				"eamodio.gitlens",
 				"davidanson.vscode-markdownlint",
 				"ms-azuretools.vscode-docker",
-				"ms-vscode.azurecli",
 				"esbenp.prettier-vscode",
 				"ms-python.python",
 				"ms-python.black-formatter",
