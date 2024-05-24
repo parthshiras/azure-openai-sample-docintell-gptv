@@ -127,88 +127,88 @@ class ResultProcessor:
         self.stats = {}
         self.logger = logging.getLogger(__class__.__name__)
 
-    def _store_info(self, file_name, file_path, check_type, input_data, entry_data):
-        path = Path(f"./results/{check_type}/{file_name}")
-        path.mkdir(parents=True)
-        with open(path / "input_data.json", "w") as f:
+    def _store_info(self, path, check_type, input_data, entry_data):
+        new_path = Path(f"./results/{check_type}/{path.name}")
+        new_path.mkdir(parents=True)
+        with open(new_path / "input_data.json", "w") as f:
             json.dump(input_data, f, indent=4)
-        with open(path / "entry_data.json", "w") as f:
+        with open(new_path / "entry_data.json", "w") as f:
             json.dump(entry_data, f, indent=4)
-        shutil.copy2(file_path, path)
+        shutil.copy2(path, new_path)
 
-    def process(self, file_name, full_path, input_data):
+    def process(self, path, input_data):
         log = self.logger.getChild(self.process.__name__)
-        log.debug(f"({file_name}, {full_path}, {input_data})")
+        log.debug(f"({path}, {input_data})")
 
-        entry = next((entry for entry in self.data_set if entry["Filename"] == file_name), None)
+        entry = next((entry for entry in self.data_set if entry["Filename"] == path.name), None)
 
         if entry is None:
-            self.failed(file_name, input_data, "No Dataset Entry found")
-            log.warning(f"Entry for file {file_name} not found")
+            self.failed(path, input_data, "No Dataset Entry found")
+            log.warning(f"Entry for file {path.name} not found")
             return
         
         results = self.comparitor.compare(input_data, entry)
-        self.stats[file_name] = results.get("score", 0)
+        self.stats[path.name] = results.get("score", 0)
 
         for comparison, result in results["comparisons"].items():
             if not result:
-                self._store_info(file_name, full_path, comparison, input_data, entry)
+                self._store_info(path, comparison, input_data, entry)
 
         if all(results["comparisons"].values()):
-            self._store_info(file_name, full_path, "succeeded", input_data, entry)
+            self._store_info(path, "succeeded", input_data, entry)
 
-    def failed(self, file_name, full_path, input_data, response):
+    def failed(self, path, input_data, response):
         log = self.logger.getChild(self.failed.__name__)
-        log.debug(f"({file_name}, {input_data}, {response})")
+        log.debug(f"({path}, {input_data}, {response})")
     
-        self._store_info(file_name, full_path, "failed", input_data, {"response": response})
+        self._store_info(path, "failed", input_data, {"response": response})
 
     def print_stats(self):
         log = self.logger.getChild(self.print_stats.__name__)
         log.info(json.dumps(self.stats, indent=4, default=lambda _: "<not serializable>"))
 
-async def post(url, file, file_path, session):
-    logging.debug(f"processing file {file_path}")
+async def post(url, path, session):
+    logging.debug(f"processing file {path.name}")
     try:
-        if os.path.isfile(file_path):
+        if path.is_file():
             form_data = aiohttp.FormData()
 
-            async with aiofiles.open(file_path, mode='rb') as f:
+            async with aiofiles.open(path, mode='rb') as f:
                 file_data = await f.read()
                 form_data.add_field('image', file_data, filename='image.jpg', content_type='image/jpeg')
 
             async with session.post(url, data=form_data) as response:
                 if response.status == 200:
                     response_data = await response.json()
-                    logging.info(f"File: {file_path} processed successfully.")
-                    return (True, file, file_path, response_data)
+                    logging.info(f"File: {path.name} processed successfully.")
+                    return (True, path, response_data)
                 elif response.status == 429:
-                    logging.info(f"Rate limit reached. File: {file}, will retry")
-                    return (False, file, file_path, "REDO")
+                    logging.info(f"Rate limit reached. File: {path.name}, will retry")
+                    return (False, path, "REDO")
                 else:
                     text = await response.text()
-                    logging.error(f"File: {file_path}, Response Code: {response.status} Error: {text}")
-                    return (False, file, file_path, text)
+                    logging.error(f"File: {path.name}, Response Code: {response.status} Error: {text}")
+                    return (False, path, text)
         else:
-            logging.error(f"File {file_path} was not a file. Skipping.")
-            return (False, file, file_path, "File not found.")
+            logging.error(f"File {path.name} was not a file. Skipping.")
+            return (False, path, "File not found.")
     except asyncio.TimeoutError as e:
-        logging.error(f"Timeout error, retrying {file}")
-        return (False, file, file_path, "REDO")
+        logging.error(f"Timeout error, retrying {path.name}")
+        return (False, path, "REDO")
     except Exception as e:
         logging.error(f"Unable to get url {url} due to {e}")
-        return (False, file, file_path, f'{str(e)}({type(e)})')
+        return (False, path, f'{str(e)}({type(e)})')
     
 def process_results(rp, results):
     redo = []
 
-    for (success, file, file_path, response) in results:
+    for (success, path, response) in results:
         if success:
-            rp.process(file, file_path, response)
+            rp.process(path, response)
         elif response == "REDO":
-            redo.append((file, file_path))
+            redo.append(path)
         else:
-            rp.failed(file, file_path, {}, response)
+            rp.failed(path, {}, response)
 
     return redo
 
@@ -221,7 +221,7 @@ async def main():
     parser.add_argument("--concurrent", type=int, help="The number of concurrent requests to make", default=2)
     parser.add_argument("--max", type=int, help="The maximum number of files to process", default=0)
     parser.add_argument("--retries", type=int, help="Amount of times to retry rate limited files", default=10)
-    parser.add_argument("--meta", type=str, help="The meta data file containing the expected results", default="meta.json")
+    parser.add_argument("--meta", type=str, help="The meta data file containing the expected results", default="data/meta.json")
     parser.add_argument('-v', '--verbose', action='count', help="Increase logging level", default=0)
     args = parser.parse_args()
 
@@ -233,23 +233,23 @@ async def main():
     # Are we running in the debugger?
     if getattr(sys, 'gettrace', lambda: None)() is not None:
         logging.getLogger().setLevel(logging.DEBUG)
-        args.max = 50
+        args.max = 2
 
     if not os.path.isfile(args.config):
         parser.error(f"Config file {args.config} not found.")
 
-    files = os.listdir(args.directory)
-    files = list(filter(lambda f: f != 'meta.json', files))
+    # glob pattern to match jpg, jpeg, png, JPG, JPEG, PNG files
+    paths = list(Path(args.directory).glob('*.[jpJP][npNP]*[gG$]'))
     if args.max > 0:
-        files = files[:args.max]
-    logging.debug(f"Processing {len(files)} files.")
+        paths = paths[:args.max]
+    logging.debug(f"Processing {len(paths)} files.")
 
     conn = aiohttp.TCPConnector(limit=args.concurrent)
     # set total=None because the POST is really slow and the defeault will cause any request still waiting to be processed after "total" seconds to fail.  Also set read to 10 minutes
     timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=600)
 
     async with aiohttp.ClientSession(connector=conn, timeout=timeout) as session:
-        results = await asyncio.gather(*(post("http://localhost:5000", file, os.path.join(args.directory, file), session) for file in files))
+        results = await asyncio.gather(*(post("http://localhost:5000", path, session) for path in paths))
         logging.info("Finalized all. Return is a list of len {} outputs.".format(len(results)))
 
         config = {}
@@ -260,7 +260,8 @@ async def main():
         comparitor = Comparitor(config)
 
         meta_data = {}
-        async with aiofiles.open(os.path.join(args.directory, args.meta), mode='r') as f:
+        
+        async with aiofiles.open(args.meta, mode='r') as f:
             meta_data = json.loads(await f.read())
 
         rp = ResultProcessor(comparitor, meta_data)
@@ -270,7 +271,7 @@ async def main():
 
         while redo and retries > 0:
             logging.info(f"Retrying {len(redo)} files.")
-            results = await asyncio.gather(*(post("http://localhost:5000", file, file_path, session) for (file, file_path) in redo))
+            results = await asyncio.gather(*(post("http://localhost:5000", path, session) for path in redo))
             redo = process_results(rp, results)
             retries -= 1
 
