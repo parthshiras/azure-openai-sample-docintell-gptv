@@ -168,7 +168,8 @@ class ResultProcessor:
         log.info(json.dumps(self.stats, indent=4, default=lambda _: "<not serializable>"))
 
 async def post(url, path, session):
-    logging.debug(f"processing file {path.name}")
+    log = logging.getLogger(__name__)
+    log.debug(f"processing file {path.name}")
     try:
         if path.is_file():
             form_data = aiohttp.FormData()
@@ -180,23 +181,23 @@ async def post(url, path, session):
             async with session.post(url, data=form_data) as response:
                 if response.status == 200:
                     response_data = await response.json()
-                    logging.info(f"File: {path.name} processed successfully.")
+                    log.info(f"File: {path.name} processed successfully.")
                     return (True, path, response_data)
                 elif response.status == 429:
-                    logging.info(f"Rate limit reached. File: {path.name}, will retry")
+                    log.info(f"Rate limit reached. File: {path.name}, will retry")
                     return (False, path, "REDO")
                 else:
                     text = await response.text()
-                    logging.error(f"File: {path.name}, Response Code: {response.status} Error: {text}")
+                    log.error(f"File: {path.name}, Response Code: {response.status} Error: {text}")
                     return (False, path, text)
         else:
-            logging.error(f"File {path.name} was not a file. Skipping.")
+            log.error(f"File {path.name} was not a file. Skipping.")
             return (False, path, "File not found.")
     except asyncio.TimeoutError as e:
-        logging.error(f"Timeout error, retrying {path.name}")
+        log.error(f"Timeout error, retrying {path.name}")
         return (False, path, "REDO")
     except Exception as e:
-        logging.error(f"Unable to get url {url} due to {e}")
+        log.error(f"Unable to get url {url} due to {e}")
         return (False, path, f'{str(e)}({type(e)})')
     
 def process_results(rp, results):
@@ -233,7 +234,7 @@ async def main():
     # Are we running in the debugger?
     if getattr(sys, 'gettrace', lambda: None)() is not None:
         logging.getLogger().setLevel(logging.DEBUG)
-        args.max = 2
+        args.max = 50
 
     if not os.path.isfile(args.config):
         parser.error(f"Config file {args.config} not found.")
