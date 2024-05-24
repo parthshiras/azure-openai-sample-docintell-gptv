@@ -1,0 +1,45 @@
+field_default: ""
+fields:
+  product_name:
+    input:
+      field:
+      - brand
+      - product_name
+    meta:
+      field: ArticleName
+      splitlines: true
+    match_threshold: 80
+    score: 30
+  article_number:
+    input:
+      field: article_number
+    meta:
+      field: ArticleNumber
+    score: 30
+  bar_code_numbers:
+    input:
+      field: bar_code_numbers
+    meta:
+      field: BarcodeNumber
+      remove: " "
+    score: 25
+  pim_article_number:
+    input:
+      field: article_number
+      remove: "."
+    meta:
+      field: PimArticle.ArticleNumber
+      path_seperator: "."
+    score: 25
+  pim_product_name:
+    input:
+      field:
+      - brand
+      - product_name
+    meta:
+      field: PimArticle.ArticleName
+      path_seperator: "."
+      value_apply: values
+      value_apply_list: true
+    match_threshold: 80
+    score: 25
