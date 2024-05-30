@@ -6,4 +6,5 @@ pyvenv.cfg
 data/
 results/
 .env
-
+*.jpg
+*.jpeg
