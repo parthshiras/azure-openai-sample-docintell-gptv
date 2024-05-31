@@ -10,18 +10,29 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 app = Flask(__name__)
 
+# create locl vars from the environment variables
+AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+AZURE_STORAGE_ACCOUNT_NAME = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
+AZURE_BLOB_CONTAINER_NAME = os.getenv('AZURE_BLOB_CONTAINER_NAME')
+AZURE_SERVICE_BUS_CONNECTION_STRING = os.getenv('AZURE_SERVICE_BUS_CONNECTION_STRING')
+AZURE_SERVICE_BUS_QUEUE_NAME = os.getenv('AZURE_SERVICE_BUS_QUEUE_NAME')
+AZURE_COSMOS_DB_ENDPOINT = os.getenv('AZURE_COSMOS_DB_ENDPOINT')
+AZURE_COSMOS_DB_KEY = os.getenv('AZURE_COSMOS_DB_KEY')
+AZURE_COSMOS_DB_DATABASE_NAME = os.getenv('AZURE_COSMOS_DB_DATABASE_NAME')
+AZURE_COSMOS_DB_CONTAINER_NAME = os.getenv('AZURE_COSMOS_DB_CONTAINER_NAME')
+
 # Initialize Azure Blob Storage client
-blob_service_client = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
-container_name = os.getenv('AZURE_BLOB_CONTAINER_NAME')
+blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+container_name = AZURE_BLOB_CONTAINER_NAME
 
 # Initialize Azure Service Bus client
-service_bus_client = ServiceBusClient.from_connection_string(os.getenv('AZURE_SERVICE_BUS_CONNECTION_STRING'))
-queue_name = os.getenv('AZURE_SERVICE_BUS_QUEUE_NAME')
+service_bus_client = ServiceBusClient.from_connection_string(AZURE_SERVICE_BUS_CONNECTION_STRING)
+queue_name = AZURE_SERVICE_BUS_QUEUE_NAME
 
 # Initialize Azure Cosmos DB client
-cosmos_client = CosmosClient(os.getenv('AZURE_COSMOS_DB_ENDPOINT'), os.getenv('AZURE_COSMOS_DB_KEY'))
-database_name = os.getenv('AZURE_COSMOS_DB_DATABASE_NAME')
-cosmos_container_name = os.getenv('AZURE_COSMOS_DB_CONTAINER_NAME')
+cosmos_client = CosmosClient(AZURE_COSMOS_DB_ENDPOINT, AZURE_COSMOS_DB_KEY)
+database_name = AZURE_COSMOS_DB_DATABASE_NAME
+cosmos_container_name = AZURE_COSMOS_DB_CONTAINER_NAME
 
 # Define Cosmos DB container
 cosmos_db = cosmos_client.get_database_client(database_name)
@@ -43,7 +54,7 @@ def upload_image():
         blob_client.upload_blob(data)
 
     # Publish event to Service Bus
-    blob_url = f"https://{os.getenv('AZURE_STORAGE_ACCOUNT_NAME')}.blob.core.windows.net/{container_name}/{blob_name}"
+    blob_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{container_name}/{blob_name}"
     message = ServiceBusMessage(blob_url)
     sender = service_bus_client.get_queue_sender(queue_name=queue_name)
     sender.send_messages(message)
