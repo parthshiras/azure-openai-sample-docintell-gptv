@@ -8,3 +8,8 @@ results/
 .env
 *.jpg
 *.jpeg
+
+.python_packages
+.venv
+
+.funcignore

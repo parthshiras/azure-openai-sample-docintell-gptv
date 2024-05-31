@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<Your_AzureWebJobsStorage_ConnectionString>",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AZURE_STORAGE_CONNECTION_STRING": "<Your_Azure_Storage_ConnectionString>",
+    "AZURE_COSMOS_DB_ENDPOINT": "<Your_Cosmos_DB_Endpoint>",
+    "AZURE_COSMOS_DB_KEY": "<Your_Cosmos_DB_Key>",
+    "AZURE_COSMOS_DB_DATABASE_NAME": "<Your_Cosmos_DB_Database_Name>",
+    "AZURE_COSMOS_DB_CONTAINER_NAME": "<Your_Cosmos_DB_Container_Name>",
+    "AZURE_SERVICE_BUS_CONNECTION_STRING": "<Your_Service_Bus_ConnectionString>",
+    "AZURE_SERVICE_BUS_QUEUE_NAME": "image-queue",
+    "AZURE_STORAGE_ACCOUNT_NAME": "<Your_Azure_Storage_Account_Name>",
+    "AZURE_BLOB_CONTAINER_NAME": "<Your_Blob_Container_Name>"
+  }
+}

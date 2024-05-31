@@ -1,0 +1,12 @@
+{
+    "bindings": [
+      {
+        "type": "serviceBusTrigger",
+        "name": "msg",
+        "queueName": "image-queue",
+        "connection": "AZURE_SERVICE_BUS_CONNECTION_STRING",
+        "direction": "in"
+      }
+    ]
+  }
+  

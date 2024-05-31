@@ -1,0 +1,5 @@
+azure-functions
+azure-storage-blob
+azure-cosmos
+azure-servicebus
+python-dotenv
