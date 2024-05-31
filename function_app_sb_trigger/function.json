@@ -1,12 +1,15 @@
 {
-    "bindings": [
-      {
-        "type": "serviceBusTrigger",
-        "name": "msg",
-        "queueName": "image-queue",
-        "connection": "AZURE_SERVICE_BUS_CONNECTION_STRING",
-        "direction": "in"
-      }
-    ]
-  }
-  
+  "bindings": [
+    {
+      "type": "serviceBusTrigger",
+      "name": "msg",
+      "queueName": "image-queue",
+      "connection": "AZURE_SERVICE_BUS_CONNECTION_STRING",
+      "direction": "in",
+      "autoComplete": true,
+      "maxAutoRenewDuration": "00:05:00",
+      "maxDeliveryCount": 10,
+      "visibilityTimeout": "00:01:00"
+    }
+  ]
+}

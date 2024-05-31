@@ -1,30 +1,31 @@
 {
-    "version": "2.0",
-    "logging": {
-      "applicationInsights": {
-        "samplingSettings": {
-          "isEnabled": true
-        }
-      },
-      "logLevel": {
-        "Function": "Information",
-        "Host.Results": "Information",
-        "Host.Aggregator": "Information",
-        "default": "Information"
+  "version": "2.0",
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[2.*, 3.0.0)"
+  },
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true
       }
     },
-    "extensions": {
-      "serviceBus": {
-        "prefetchCount": 100,
-        "messageHandlerOptions": {
-          "autoComplete": true,
-          "maxConcurrentCalls": 16,
-          "maxAutoRenewDuration": "00:05:00",
-          "maxDeliveryCount": 10,
-          "visibilityTimeout": "00:01:00"
-        }
+    "logLevel": {
+      "Function": "Information",
+      "Host.Results": "Information",
+      "Host.Aggregator": "Information",
+      "default": "Information"
+    }
+  },
+  "extensions": {
+    "serviceBus": {
+      "prefetchCount": 100,
+      "messageHandlerOptions": {
+        "autoComplete": true,
+        "maxConcurrentCalls": 16,
+        "maxAutoRenewDuration": "00:05:00"
       }
-    },
-    "functionTimeout": "00:10:00"
-  }
-  
+    }
+  },
+  "functionTimeout": "00:10:00"
+}

@@ -24,6 +24,7 @@ AZURE_COSMOS_DB_CONTAINER_NAME = os.getenv('AZURE_COSMOS_DB_CONTAINER_NAME')
 
 # Initialize clients
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+blob_container_name = AZURE_BLOB_CONTAINER_NAME
 cosmos_client = CosmosClient(AZURE_COSMOS_DB_ENDPOINT, AZURE_COSMOS_DB_KEY)
 database_name = AZURE_COSMOS_DB_DATABASE_NAME
 container_name = AZURE_COSMOS_DB_CONTAINER_NAME
@@ -38,9 +39,12 @@ def main(msg: func.ServiceBusMessage):
     logging.info(f'Processing blob URL: {blob_url}')
     
     # Initialize retry count
-    retry_count = msg.application_properties.get('retry_count', 0)
-    
-    blob_client = blob_service_client.get_blob_client(blob_url)
+    application_properties = msg.application_properties or {}
+    retry_count = application_properties.get('retry_count', 0)
+    blob_name = blob_url.split('/')[-1]
+
+    blob_client = blob_service_client.get_blob_client(container=blob_container_name, blob=blob_name)
+   
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(blob_client.download_blob().readall())
         temp_file.close()
