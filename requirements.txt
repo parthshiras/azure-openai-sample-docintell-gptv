@@ -12,3 +12,5 @@ tiktoken
 requests
 fuzzywuzzy
 python-Levenshtein
+azure-storage-blob
+azure-servicebus
