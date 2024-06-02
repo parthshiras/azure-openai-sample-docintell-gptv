@@ -8,6 +8,7 @@ from azure.cosmos import CosmosClient
 from gptv import process_image
 from azure.servicebus import ServiceBusClient, ServiceBusMessage
 from dotenv import load_dotenv
+from azure.cosmos.exceptions import CosmosResourceExistsError, CosmosHttpResponseError
 
 load_dotenv('.env')
 
@@ -41,21 +42,45 @@ def main(msg: func.ServiceBusMessage):
     # Initialize retry count
     application_properties = msg.application_properties or {}
     retry_count = application_properties.get('retry_count', 0)
+    
+    # Extract blob name from the blob URL
     blob_name = blob_url.split('/')[-1]
 
     blob_client = blob_service_client.get_blob_client(container=blob_container_name, blob=blob_name)
-   
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(blob_client.download_blob().readall())
         temp_file.close()
     
     try:
+        logging.info('Starting image processing...')
         metadata = process_image(temp_file.name)
-        metadata['blob_url'] = blob_url
-        container.create_item(body=metadata)
-        logging.info('Processing complete and metadata stored in Cosmos DB.')
+        logging.info(f'Image processing complete: {metadata}')
+        metadata_dict = metadata.model_dump()
+        metadata_dict['id'] = blob_name  # Use the blob name as the unique ID
+        metadata_dict['blob_url'] = blob_url
+
+        # Check if the document already exists
+        try:
+            existing_document = container.read_item(item=blob_name, partition_key=blob_name)
+            # If the document exists, merge the new results with the existing document
+            for key, value in metadata_dict.items():
+                existing_document[key] = value
+            container.replace_item(item=existing_document['id'], body=existing_document)
+            logging.info('Document updated in Cosmos DB.')
+        except CosmosResourceExistsError:
+            # If the document does not exist, create a new one
+            container.create_item(body=metadata_dict)
+            logging.info('New document created in Cosmos DB.')
+        except CosmosHttpResponseError as e:
+            if e.status_code == 404:
+                # If the document does not exist, create a new one
+                container.create_item(body=metadata_dict)
+                logging.info('New document created in Cosmos DB.')
+            else:
+                raise
+
     except Exception as e:
-        logging.error(f"Error processing image: {e}")
+        logging.error(f"Error processing image: {e}", exc_info=True)
 
         if retry_count < max_retries:
             # Increment retry count and send message back to queue with delay
@@ -74,3 +99,5 @@ def main(msg: func.ServiceBusMessage):
             logging.error('Max retries reached. Sending message to dead-letter queue.')
             dead_letter_sender = service_bus_client.get_queue_sender(queue_name=f"{queue_name}/$deadletterqueue")
             dead_letter_sender.send_messages(ServiceBusMessage(blob_url))
+
+

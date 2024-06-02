@@ -4,7 +4,6 @@ from flask import Flask, request, jsonify
 from azure.storage.blob import BlobServiceClient
 from azure.servicebus import ServiceBusClient, ServiceBusMessage
 from azure.cosmos import CosmosClient
-import uuid
 from dotenv import load_dotenv
 
 load_dotenv('.env')
@@ -46,7 +45,7 @@ def upload_image():
     temp_file.close()
 
     # Generate a unique name for the blob
-    blob_name = str(uuid.uuid4()) + "_" + file.filename
+    blob_name = file.filename
 
     # Upload image to Blob Storage
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
