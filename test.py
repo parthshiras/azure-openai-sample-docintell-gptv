@@ -28,7 +28,7 @@ class ResultProcessor:
         return ' '.join(filter(None, (pic_data["brand"], pic_data["product_name"])))
     
     def _store_failed_info(self, check_type, pic_data, entry_data):
-        path = Path(f'./results/{check_type}/{self._current_file_name}')
+        path = Path(f'../results/{check_type}/{self._current_file_name}')
         path.mkdir(parents=True)
         with open(path / 'pic_data.json', 'w') as f:
             json.dump(pic_data, f, indent=4)
@@ -153,7 +153,7 @@ class ResultProcessor:
 
 def main():
     parser = argparse.ArgumentParser(description='Test Image Processing')
-    parser.add_argument('--directory', type=str, help='The directory containing the images to process', default='data')
+    parser.add_argument('--directory', type=str, help='The directory containing the images to process', default='../data')
     parser.add_argument('--threshold', type=int, help='The threshold for fuzzy matching', default=80)
     parser.add_argument('--max', type=int, help='The maximum number of files to process', default=1000000)
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
