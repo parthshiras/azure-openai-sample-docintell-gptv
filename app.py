@@ -50,7 +50,7 @@ def upload_image():
     # Upload image to Blob Storage
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
     with open(temp_file.name, "rb") as data:
-        blob_client.upload_blob(data)
+        blob_client.upload_blob(data, overwrite=True)
 
     # Publish event to Service Bus
     blob_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{container_name}/{blob_name}"
