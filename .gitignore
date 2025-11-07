@@ -6,4 +6,4 @@ pyvenv.cfg
 data/
 results/
 .env
-
+.env.dev
