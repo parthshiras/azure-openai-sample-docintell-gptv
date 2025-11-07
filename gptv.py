@@ -5,7 +5,7 @@ import logging
 import io
 
 from dotenv import load_dotenv
-from langchain.chains.transform import TransformChain
+from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -26,7 +26,7 @@ llm = AzureChatOpenAI(
     azure_endpoint= AZURE_OPENAI_ENDPOINT,
     azure_deployment=AZURE_OPENAI_API_DEPLOYMENT,
     openai_api_version = OPENAI_API_VERSION,
-    openai_api_key= AZURE_OPEN_API_KEY,
+    openai_api_key= AZURE_OPENAI_API_KEY,
     temperature=0,
     max_tokens=1000,
     verbose=True)
@@ -45,11 +45,7 @@ def load_image(inputs: dict) -> dict:
 
 
 # This piece-of-chain is used later, that loads an image from a file and encodes to base64 with the previous function.
-load_image_chain = TransformChain(
-    input_variables=["image_path"],
-    output_variables=["image"],
-    transform=load_image
-)
+load_image_chain = RunnableLambda(load_image)
 
 
 # Pydantic schema for the image information. Descriptions are important (used by the model).
