@@ -1,0 +1,133 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "baseName": {
+      "type": "string",
+      "defaultValue": "docintell-gptv",
+      "metadata": {
+        "description": "Base name for all resources"
+      }
+    },
+    "environmentSuffix": {
+      "type": "string",
+      "defaultValue": "dev",
+      "metadata": {
+        "description": "Environment suffix (dev, test, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "openAISku": {
+      "type": "string",
+      "defaultValue": "S0",
+      "metadata": {
+        "description": "SKU for Azure OpenAI service"
+      }
+    },
+    "documentIntelligenceSku": {
+      "type": "string",
+      "defaultValue": "S0",
+      "metadata": {
+        "description": "SKU for Document Intelligence service"
+      }
+    }
+  },
+  "variables": {
+    "uniqueSuffix": "[substring(uniqueString(resourceGroup().id), 0, 5)]",
+    "openAIName": "[concat(parameters('baseName'), '-openai-', parameters('environmentSuffix'), '-', variables('uniqueSuffix'))]",
+    "docIntelName": "[concat(parameters('baseName'), '-docintel-', parameters('environmentSuffix'), '-', variables('uniqueSuffix'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('openAIName')]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "[parameters('openAISku')]"
+      },
+      "properties": {
+        "customSubDomainName": "[variables('openAIName')]",
+        "publicNetworkAccess": "Enabled",
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(variables('openAIName'), '/gpt-4')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAIName'))]"
+      ],
+      "sku": {
+        "name": "Standard",
+        "capacity": 10
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-4",
+          "version": "vision-preview"
+        },
+        "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+        "raiPolicyName": "Microsoft.Default"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('docIntelName')]",
+      "location": "[parameters('location')]",
+      "kind": "FormRecognizer",
+      "sku": {
+        "name": "[parameters('documentIntelligenceSku')]"
+      },
+      "properties": {
+        "customSubDomainName": "[variables('docIntelName')]",
+        "publicNetworkAccess": "Enabled",
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "azureOpenAIEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('openAIName'))).endpoint]"
+    },
+    "azureOpenAIApiKey": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('openAIName')), '2023-05-01').key1]"
+    },
+    "azureOpenAIDeployment": {
+      "type": "string",
+      "value": "gpt-4"
+    },
+    "documentIntelligenceEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('docIntelName'))).endpoint]"
+    },
+    "documentIntelligenceKey": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('docIntelName')), '2023-05-01').key1]"
+    },
+    "openAIResourceName": {
+      "type": "string",
+      "value": "[variables('openAIName')]"
+    },
+    "documentIntelligenceResourceName": {
+      "type": "string",
+      "value": "[variables('docIntelName')]"
+    }
+  }
+}
