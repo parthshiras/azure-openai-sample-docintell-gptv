@@ -1,14 +1,32 @@
+# Core web framework
 flask
-azure-cosmos
-python-dotenv
+werkzeug
+
+# Azure services
 azure-ai-documentintelligence
+azure-core
 azure-identity
-pydantic
+
+# Environment and configuration
+python-dotenv
+
+# AI/ML libraries
 langchain
 langchain_core
 langchain_community
 langchain_openai
 tiktoken
-requests
+pydantic
+
+# Text processing and comparison
 fuzzywuzzy
 python-Levenshtein
+
+# HTTP requests
+requests
+
+# File handling and utilities
+Pillow
+
+# Optional: for enhanced document processing
+# azure-cosmos
