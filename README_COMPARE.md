@@ -25,19 +25,28 @@ This system compares two document scans to determine if they contain the same co
 python app_compare.py
 ```
 
-### 2. Compare Two Documents
+### 2. Test Document Comparison (Easiest Method)
 ```bash
-# Using the test script
+# Use the comprehensive test script (recommended)
 python test_compare.py document1.pdf document2.pdf
 
-# Using curl
+# This script automatically tests:
+# - Direct comparison functionality
+# - API endpoint functionality
+# - Provides formatted results for both
+```
+
+### 3. Alternative Testing Methods
+
+**Using curl:**
+```bash
 curl -X POST \
   -F "document1=@doc1.pdf" \
   -F "document2=@doc2.pdf" \
   http://localhost:5000/compare
 ```
 
-### 3. Direct Python Usage
+**Direct Python usage:**
 ```python
 from document_compare import compare_documents
 
@@ -160,9 +169,32 @@ Key Differences: ["Different headers", "Different table content", "Different sig
 
 ## Testing
 
-Run the comprehensive test suite:
+### Comprehensive Test Suite (Recommended)
+
+Run the comprehensive test suite with your documents:
 ```bash
 python test_compare.py doc1.pdf doc2.pdf
 ```
 
-This tests both direct comparison and API functionality.
+This single command:
+- ✅ Tests direct document comparison functionality
+- ✅ Tests the REST API endpoints 
+- ✅ Provides detailed formatted results
+- ✅ Shows both text similarity and AI analysis
+- ✅ Handles both PDF and image file formats
+
+### Example Test Output
+
+```text
+🧪 Document Comparison Test Suite
+========================================
+📄 Testing with provided documents:
+  Document 1: data/doc1.pdf
+  Document 2: data/doc2.pdf
+
+🔍 Test 1: Direct Comparison
+Same Document: ✅ YES
+Confidence Score: 0.98
+Text Similarity: 0.97
+Visual Similarity: high
+```
